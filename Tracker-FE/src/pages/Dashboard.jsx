@@ -13,7 +13,6 @@ import {
 import { timeAgo, statusLabel, slaLabel } from '../utils'
 import { selectTicket } from '../store/slices/ticketsSlice'
 
-/* ─── MOCK GENERATORS ─── */
 const seed = (i) => Math.abs(Math.sin(i * 127.1 + 311.7) * 43758.5453) % 1
 const genSparkline = (base, variance, len = 7) =>
   Array.from({ length: len }, (_, i) => ({
@@ -134,11 +133,10 @@ function RangeToggle({ value, onChange }) {
         <button
           key={o}
           onClick={() => onChange(o)}
-          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
-            value === o
+          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${value === o
               ? 'bg-white text-slate-800 shadow-sm'
               : 'text-slate-400 hover:text-slate-600'
-          }`}
+            }`}
         >
           {o}
         </button>
@@ -664,9 +662,8 @@ export default function Dashboard() {
                   <button
                     key={t.id}
                     onClick={() => dispatch(selectTicket(t.id))}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 hover:shadow-sm ${
-                      isBreached ? 'bg-red-50/60 hover:bg-red-50' : 'bg-amber-50/40 hover:bg-amber-50'
-                    }`}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 hover:shadow-sm ${isBreached ? 'bg-red-50/60 hover:bg-red-50' : 'bg-amber-50/40 hover:bg-amber-50'
+                      }`}
                   >
                     {isBreached && (
                       <span className="relative flex h-2 w-2 shrink-0">
