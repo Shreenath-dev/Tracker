@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --auth-dark: #0a0f1a;
+    --auth-grid: rgba(255,255,255,0.04);
+    --bg-base: #fdfaf5;
+    --bg-surface: #ffffff;
+    --bg-muted: #f9f3e8;
+    --border: #e8dfc8;
+    --text-primary: #0c1220;
+    --text-secondary: #4a5568;
+    --text-muted: #8a9ab0;
+    --accent: #d97706;
+    --accent-light: #fef3c7;
+    --accent-hover: #b45309;
+    --urgent: #dc2626;
+    --high: #ea580c;
+    --medium: #d97706;
+    --low: #16a34a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: 'DM Serif Display', serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-150 text-sm;
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-cream-100 text-slate-700 font-medium px-4 py-2 rounded-lg border border-[var(--border)] transition-all duration-150 text-sm;
+  }
+  .input-base {
+    @apply w-full px-3 py-2.5 rounded-lg border border-[var(--border)] bg-white text-slate-800 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all;
+  }
+  .card {
+    @apply bg-white rounded-xl border border-[var(--border)] shadow-card;
+  }
+  .badge-urgent { @apply bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full; }
+  .badge-high { @apply bg-orange-100 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full; }
+  .badge-medium { @apply bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full; }
+  .badge-low { @apply bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full; }
+  .status-open { @apply bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full; }
+  .status-inprogress { @apply bg-violet-100 text-violet-700 text-xs font-medium px-2 py-0.5 rounded-full; }
+  .status-waiting { @apply bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full; }
+  .status-resolved { @apply bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full; }
+}
+
+/* Auth page animations */
+@keyframes float-a {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50% { transform: translateY(-12px) rotate(1deg); }
+}
+@keyframes float-b {
+  0%, 100% { transform: translateY(0px) rotate(2deg); }
+  50% { transform: translateY(-18px) rotate(-1deg); }
+}
+@keyframes float-c {
+  0%, 100% { transform: translateY(0px) rotate(-2deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217,119,6,0.4); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(217,119,6,0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217,119,6,0); }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+.auth-float-a { animation: float-a 6s ease-in-out infinite; }
+.auth-float-b { animation: float-b 8s ease-in-out infinite; }
+.auth-float-c { animation: float-c 7s ease-in-out infinite 1s; }
+.auth-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+.auth-pulse { animation: pulse-ring 2s cubic-bezier(0.455,0.03,0.515,0.955) infinite; }
+.auth-line { stroke-dasharray: 1000; animation: draw-line 2s ease forwards; }
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4c9b0; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #b8a98a; }
