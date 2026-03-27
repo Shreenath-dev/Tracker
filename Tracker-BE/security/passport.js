@@ -1,10 +1,10 @@
 import passport from "passport";
 import { ExtractJwt,Strategy } from "passport-jwt";
 import config from "@/config"
-import {Token} from "@/models"
+import {Tokens as Token} from "@/models"
 
 const accessOptions ={
-    jwtFromRequest : ExtractJwt.fromAuthHeaderAsBearerToken,
+    jwtFromRequest : ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey:config.ACCESS_TOKEN_SECRET
 }
 

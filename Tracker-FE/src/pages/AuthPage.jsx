@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { sendOtp, verifyOtp, login } from '../store/slices/authSlice'
+import { signupUser, verifyEmail, createPassword, signIn, fetchAdminProfile } from '../store/slices/authSlice'
 import { ArrowRight, Mail, Lock, User, Building2, AlertCircle, CheckCircle2, Clock, Zap } from 'lucide-react'
 
 /* ── SVG Illustration ── */
@@ -227,7 +227,7 @@ function StepDots({ mode }) {
         </div>
       ))}
       <span className="ml-2 text-xs text-slate-400 font-medium">
-        {step === 1 ? 'Account' : step === 2 ? 'Verify' : 'Workspace'}
+        {step === 1 ? 'Account' : step === 2 ? 'Verify' : 'Password'}
       </span>
     </div>
   )
@@ -265,60 +265,72 @@ function Field({ label, icon: Icon, error, ...props }) {
 export default function AuthPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const { loading: apiLoading, error: apiError, signupToken } = useSelector(s => s.auth)
+  const [rememberMe, setRememberMe] = useState(false)
   const [mode, setMode] = useState('login')
-  const [form, setForm] = useState({ name: '', email: '', password: '', workspace: '' })
+  const [form, setForm] = useState({ name: '', org: '', email: '', password: '', confirmPassword: '' })
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [errors, setErrors] = useState({})
-  const [loading, setLoading] = useState(false)
   const otpRefs = useRef([])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const clearErr = k => setErrors(e => ({ ...e, [k]: '' }))
 
-  function simulate(cb) {
-    setLoading(true)
-    setTimeout(() => { setLoading(false); cb() }, 600)
-  }
-
-  function handleLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault()
     const errs = {}
     if (!form.email) errs.email = 'Email is required'
     if (!form.password) errs.password = 'Password is required'
     if (Object.keys(errs).length) { setErrors(errs); return }
-    simulate(() => { dispatch(login()); navigate('/dashboard') })
+    const result = await dispatch(signIn({ email: form.email, password: form.password, rememberMe }))
+    if (signIn.fulfilled.match(result)) {
+      await dispatch(fetchAdminProfile())
+      navigate('/dashboard')
+    }
   }
 
-  function handleSignup(e) {
+  async function handleSignup(e) {
     e.preventDefault()
     const errs = {}
     if (!form.name) errs.name = 'Name is required'
+    if (!form.org) errs.org = 'Organisation name is required'
     if (!form.email) errs.email = 'Email is required'
-    if (!form.password || form.password.length < 8) errs.password = 'Min. 8 characters'
     if (Object.keys(errs).length) { setErrors(errs); return }
-    simulate(() => { dispatch(sendOtp(form.email)); setMode('otp') })
+    const result = await dispatch(signupUser({ name: form.name, email: form.email, orgName: form.org }))
+    if (signupUser.fulfilled.match(result)) setMode('otp')
   }
 
-  function handleOtpChange(i, val) {
+  async function handleOtpChange(i, val) {
     if (!/^\d?$/.test(val)) return
     const next = [...otp]; next[i] = val; setOtp(next)
     if (val && i < 5) otpRefs.current[i + 1]?.focus()
     if (next.every(d => d !== '') && i === 5) {
-      simulate(() => { dispatch(verifyOtp()); setMode('workspace') })
+      const result = await dispatch(verifyEmail({ token: signupToken, otp: next.join('') }))
+      if (verifyEmail.fulfilled.match(result)) setMode('workspace')
     }
   }
 
-  function handleWorkspace(e) {
+  async function handleVerifyOtp() {
+    if (otp.some(d => !d)) return
+    const result = await dispatch(verifyEmail({ token: signupToken, otp: otp.join('') }))
+    if (verifyEmail.fulfilled.match(result)) setMode('workspace')
+  }
+
+  async function handlePasswordSetup(e) {
     e.preventDefault()
-    if (!form.workspace) { setErrors({ workspace: 'Organisation name is required' }); return }
-    simulate(() => navigate('/dashboard'))
+    const errs = {}
+    if (!form.password || form.password.length < 8) errs.password = 'Min. 8 characters'
+    if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match'
+    if (Object.keys(errs).length) { setErrors(errs); return }
+    const result = await dispatch(createPassword({ token: signupToken, password: form.password, confirmPassword: form.confirmPassword }))
+    if (createPassword.fulfilled.match(result)) navigate('/dashboard')
   }
 
   const titles = {
     login: { h: 'Welcome back', sub: 'Sign in to your workspace' },
     signup: { h: 'Create your account', sub: 'Start your 14-day free trial' },
     otp: { h: 'Check your inbox', sub: `We sent a 6-digit code to ${form.email}` },
-    workspace: { h: 'Name your workspace', sub: 'Almost there — one last step' },
+    workspace: { h: 'Set your password', sub: 'Almost there — one last step' },
   }
 
   return (
@@ -448,9 +460,22 @@ export default function AuthPage() {
                   {errors.password && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.password}</p>}
                 </div>
 
-                <button type="submit" disabled={loading}
+                <div className="flex items-center gap-2">
+                  <input id="rememberMe" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 accent-amber-600 cursor-pointer" />
+                  <label htmlFor="rememberMe" className="text-xs text-slate-500 cursor-pointer">Remember me</label>
+                </div>
+
+                {apiError && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+                    <AlertCircle size={14} className="text-red-500 shrink-0" />
+                    <p className="text-sm text-red-600">{apiError}</p>
+                  </div>
+                )}
+
+                <button type="submit" disabled={apiLoading}
                   className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-70 text-white font-semibold py-3.5 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-amber-600/20 hover:shadow-amber-600/30 hover:-translate-y-0.5 active:translate-y-0">
-                  {loading ? (
+                  {apiLoading ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <><span>Sign in</span><ArrowRight size={15} /></>
@@ -464,7 +489,6 @@ export default function AuthPage() {
                 </div>
 
                 <button type="button"
-                  onClick={() => { dispatch(login()); navigate('/dashboard') }}
                   className="w-full flex items-center justify-center gap-2.5 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-3 rounded-xl transition-all duration-200 text-sm">
                   <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
                   Sign in with Google
@@ -478,37 +502,23 @@ export default function AuthPage() {
                 <Field label="Full name" icon={User} placeholder="Alex Morgan"
                   value={form.name} error={errors.name}
                   onChange={e => { set('name', e.target.value); clearErr('name') }} />
+                <Field label="Organisation name" icon={Building2} placeholder="Acme Corp"
+                  value={form.org} error={errors.org}
+                  onChange={e => { set('org', e.target.value); clearErr('org') }} />
                 <Field label="Work email" icon={Mail} type="email" placeholder="you@company.com"
                   value={form.email} error={errors.email}
                   onChange={e => { set('email', e.target.value); clearErr('email') }} />
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Password</label>
-                  <div className={`relative flex items-center rounded-xl border transition-all duration-200 bg-white ${
-                    errors.password ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200 hover:border-slate-300 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100'
-                  }`}>
-                    <div className="pl-3.5 text-slate-300"><Lock size={15} strokeWidth={1.8} /></div>
-                    <input type="password" placeholder="Min. 8 characters" value={form.password}
-                      onChange={e => { set('password', e.target.value); clearErr('password') }}
-                      className="flex-1 px-3 py-3 text-sm text-slate-800 placeholder-slate-300 bg-transparent focus:outline-none" />
-                  </div>
-                  {errors.password && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.password}</p>}
-                  {/* Password strength */}
-                  {form.password.length > 0 && (
-                    <div className="mt-2 flex gap-1">
-                      {[1,2,3,4].map(n => (
-                        <div key={n} className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                          form.password.length >= n * 3
-                            ? n <= 1 ? 'bg-red-400' : n <= 2 ? 'bg-amber-400' : n <= 3 ? 'bg-yellow-400' : 'bg-green-400'
-                            : 'bg-slate-100'
-                        }`} />
-                      ))}
-                    </div>
-                  )}
-                </div>
 
-                <button type="submit" disabled={loading}
+                {apiError && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+                    <AlertCircle size={14} className="text-red-500 shrink-0" />
+                    <p className="text-sm text-red-600">{apiError}</p>
+                  </div>
+                )}
+
+                <button type="submit" disabled={apiLoading}
                   className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-70 text-white font-semibold py-3.5 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-amber-600/20 hover:shadow-amber-600/30 hover:-translate-y-0.5 active:translate-y-0">
-                  {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span>Create account</span><ArrowRight size={15} /></>}
+                  {apiLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span>Continue</span><ArrowRight size={15} /></>}
                 </button>
 
                 <p className="text-xs text-slate-400 text-center leading-relaxed">
@@ -523,7 +533,6 @@ export default function AuthPage() {
             {/* ── OTP ── */}
             {mode === 'otp' && (
               <div className="space-y-8">
-                {/* OTP inputs */}
                 <div className="flex gap-3 justify-center">
                   {otp.map((d, i) => (
                     <input
@@ -539,7 +548,14 @@ export default function AuthPage() {
                   ))}
                 </div>
 
-                {loading && (
+                {apiError && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+                    <AlertCircle size={14} className="text-red-500 shrink-0" />
+                    <p className="text-sm text-red-600">{apiError}</p>
+                  </div>
+                )}
+
+                {apiLoading && (
                   <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
                     <span className="w-4 h-4 border-2 border-slate-200 border-t-amber-500 rounded-full animate-spin" />
                     Verifying…
@@ -547,10 +563,10 @@ export default function AuthPage() {
                 )}
 
                 <button
-                  onClick={() => { if (otp.every(d => d)) simulate(() => { dispatch(verifyOtp()); setMode('workspace') }) }}
-                  disabled={loading || otp.some(d => !d)}
+                  onClick={handleVerifyOtp}
+                  disabled={apiLoading || otp.some(d => !d)}
                   className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-amber-600/20">
-                  <span>Verify code</span><ArrowRight size={15} />
+                  {apiLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span>Verify code</span><ArrowRight size={15} /></>}
                 </button>
 
                 <div className="text-center space-y-2">
@@ -560,45 +576,68 @@ export default function AuthPage() {
                   </button>
                 </div>
 
-                {/* Expiry indicator */}
                 <div className="flex items-center gap-2 justify-center text-xs text-slate-400">
                   <Clock size={12} />
-                  Code expires in <span className="font-semibold text-slate-600">9:42</span>
+                  Code expires in <span className="font-semibold text-slate-600">10:00</span>
                 </div>
               </div>
             )}
 
-            {/* ── WORKSPACE ── */}
+            {/* ── PASSWORD SETUP ── */}
             {mode === 'workspace' && (
-              <form onSubmit={handleWorkspace} className="space-y-6">
-                {/* Success badge */}
+              <form onSubmit={handlePasswordSetup} className="space-y-5">
                 <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
                   <CheckCircle2 size={16} className="text-green-500 shrink-0" />
                   <p className="text-sm text-green-700 font-medium">Email verified successfully</p>
                 </div>
 
-                <Field label="Organisation name" icon={Building2} placeholder="Acme Corp"
-                  value={form.workspace} error={errors.workspace}
-                  onChange={e => { set('workspace', e.target.value); clearErr('workspace') }} />
-
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-2.5">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Your workspace will include</p>
-                  {[
-                    'Unlimited tickets & contacts',
-                    'SLA tracking & escalations',
-                    'Team management & roles',
-                    'Embed widget & API access',
-                  ].map(f => (
-                    <div key={f} className="flex items-center gap-2.5 text-xs text-slate-600">
-                      <CheckCircle2 size={13} className="text-amber-500 shrink-0" />
-                      {f}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+                  <div className={`relative flex items-center rounded-xl border transition-all duration-200 bg-white ${
+                    errors.password ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200 hover:border-slate-300 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100'
+                  }`}>
+                    <div className="pl-3.5 text-slate-300"><Lock size={15} strokeWidth={1.8} /></div>
+                    <input type="password" placeholder="Min. 8 characters" value={form.password}
+                      onChange={e => { set('password', e.target.value); clearErr('password') }}
+                      className="flex-1 px-3 py-3 text-sm text-slate-800 placeholder-slate-300 bg-transparent focus:outline-none" />
+                  </div>
+                  {errors.password && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.password}</p>}
+                  {form.password.length > 0 && (
+                    <div className="mt-2 flex gap-1">
+                      {[1,2,3,4].map(n => (
+                        <div key={n} className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                          form.password.length >= n * 3
+                            ? n <= 1 ? 'bg-red-400' : n <= 2 ? 'bg-amber-400' : n <= 3 ? 'bg-yellow-400' : 'bg-green-400'
+                            : 'bg-slate-100'
+                        }`} />
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
 
-                <button type="submit" disabled={loading}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
+                  <div className={`relative flex items-center rounded-xl border transition-all duration-200 bg-white ${
+                    errors.confirmPassword ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200 hover:border-slate-300 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100'
+                  }`}>
+                    <div className="pl-3.5 text-slate-300"><Lock size={15} strokeWidth={1.8} /></div>
+                    <input type="password" placeholder="Re-enter password" value={form.confirmPassword}
+                      onChange={e => { set('confirmPassword', e.target.value); clearErr('confirmPassword') }}
+                      className="flex-1 px-3 py-3 text-sm text-slate-800 placeholder-slate-300 bg-transparent focus:outline-none" />
+                  </div>
+                  {errors.confirmPassword && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={11} />{errors.confirmPassword}</p>}
+                </div>
+
+                {apiError && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+                    <AlertCircle size={14} className="text-red-500 shrink-0" />
+                    <p className="text-sm text-red-600">{apiError}</p>
+                  </div>
+                )}
+
+                <button type="submit" disabled={apiLoading}
                   className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-70 text-white font-semibold py-3.5 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-amber-600/20 hover:shadow-amber-600/30 hover:-translate-y-0.5 active:translate-y-0">
-                  {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span>Enter workspace</span><ArrowRight size={15} /></>}
+                  {apiLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span>Create account</span><ArrowRight size={15} /></>}
                 </button>
               </form>
             )}

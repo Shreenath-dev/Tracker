@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
+import { useEffect } from 'react'
 import AppLayout from './components/layout/AppLayout'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
@@ -8,6 +9,7 @@ import ContactsPage from './pages/ContactsPage'
 import TeamPage from './pages/TeamPage'
 import IntegrationsPage from './pages/IntegrationsPage'
 import SettingsPage from './pages/SettingsPage'
+import { refreshAccessToken, fetchAdminProfile } from './store/slices/authSlice'
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useSelector(s => s.auth.isAuthenticated)
@@ -15,6 +17,18 @@ function ProtectedRoute({ children }) {
 }
 
 export default function App() {
+  const dispatch = useDispatch()
+  const bootstrapping = useSelector(s => s.auth.bootstrapping)
+
+  useEffect(() => {
+    dispatch(refreshAccessToken()).then(result => {
+      if (refreshAccessToken.fulfilled.match(result)) {
+        dispatch(fetchAdminProfile())
+      }
+    })
+  }, [])
+
+  if (bootstrapping) return null
   return (
     <BrowserRouter>
       <Routes>

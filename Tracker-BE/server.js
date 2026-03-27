@@ -20,12 +20,12 @@ app.use(
   cors({
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    origin: ["http://localhost:3000"],
+    origin: ["http://localhost:5173", "http://localhost:3000"],
   })
 );
 
-app.use(bodyParser.urlencoded({extended: true, limit: "16kb"}))
-app.use(bodyParser.json({limit:"16kb"}))
+app.use(bodyParser.urlencoded({ extended: true, limit: "16kb" }))
+app.use(bodyParser.json({ limit: "16kb" }))
 app.use(cookieParser())
 app.use(frameGuard({ action: "sameorigin" }));
 app.use(morgan("dev"))

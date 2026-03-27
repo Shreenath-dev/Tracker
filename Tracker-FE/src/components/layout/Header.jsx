@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Bell, Plus, X, Check } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Bell, Plus, X, LogOut } from 'lucide-react'
 import { markRead, markAllRead } from '../../store/slices/notificationsSlice'
+import { signOut } from '../../store/slices/authSlice'
 import CreateTicketModal from '../tickets/CreateTicketModal'
 
 const typeColors = {
@@ -22,6 +24,7 @@ function timeAgo(ts) {
 
 export default function Header({ title }) {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const notifications = useSelector(s => s.notifications.items)
   const unread = notifications.filter(n => !n.read).length
   const [showNotifs, setShowNotifs] = useState(false)
@@ -38,6 +41,17 @@ export default function Header({ title }) {
           >
             <Plus size={14} />
             New Ticket
+          </button>
+
+          <button
+            onClick={async () => {
+              await dispatch(signOut())
+              navigate('/login')
+            }}
+            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+            title="Sign out"
+          >
+            <LogOut size={17} strokeWidth={1.8} />
           </button>
 
           <div className="relative">

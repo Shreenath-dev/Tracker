@@ -9,4 +9,11 @@ export default {
   REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
   REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY,
   OTP_EXPIRY: process.env.OTP_EXPIRY,
-  RUNTIME: process.env.RUNTIME,}
+  RUNTIME: process.env.RUNTIME,
+  EMAIL_HOST: process.env.EMAIL_HOST,
+  EMAIL_PORT: process.env.EMAIL_PORT,
+  EMAIL_USERNAME: process.env.USERNAME,
+  EMAIL_PASSWORD: process.env.PASSWORD,
+  EMAIL_SECURE: process.env.EMAIL_SECURE,
+  HASHING_SECRET: process.env.HASHING_SECRET
+}
