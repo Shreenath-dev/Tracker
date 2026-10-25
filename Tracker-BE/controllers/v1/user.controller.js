@@ -25,7 +25,7 @@ export const getAdminProfile = async (req, res) => {
 
         const userData = await User.findById(user.id)
 
-        if (!userData) { return res.status(400).json({ status: false, message: "User not found" }) }
+        if (!userData) { return res.status(400).json({ status: false, message: "No user found" }) }
 
         const data = {
             fullname: userData.name,
